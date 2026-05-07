@@ -1,0 +1,1310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>YT Scraper</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --red: #ff2d2d;
+    --red-dim: #c41c1c;
+    --bg: #0a0a0a;
+    --surface: #111111;
+    --surface2: #1a1a1a;
+    --surface3: #222222;
+    --border: #2a2a2a;
+    --text: #e8e8e8;
+    --muted: #666;
+    --green: #22c55e;
+    --yellow: #f59e0b;
+    --blue: #3b82f6;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ─── Header ─── */
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 32px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .logo {
+    font-family: 'Space Mono', monospace;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--red);
+    letter-spacing: -0.5px;
+  }
+  .logo span { color: var(--text); }
+  .logo-dot { width: 8px; height: 8px; background: var(--red); border-radius: 50%; display: inline-block; margin-right: 8px; animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+  .header-sep { flex: 1; }
+  .server-status { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); font-family: 'Space Mono', monospace; }
+  .status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); }
+  .status-dot.offline { background: var(--red); }
+
+  /* ─── Layout ─── */
+  .layout {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  /* ─── Sidebar ─── */
+  aside {
+    width: 220px;
+    min-width: 220px;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    padding: 20px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .section-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    padding: 8px 20px 4px;
+  }
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 20px;
+    cursor: pointer;
+    border-left: 3px solid transparent;
+    transition: all 0.15s;
+    font-size: 14px;
+    color: var(--muted);
+    user-select: none;
+  }
+  .nav-item:hover { background: var(--surface2); color: var(--text); }
+  .nav-item.active { border-left-color: var(--red); background: rgba(255,45,45,0.06); color: var(--text); }
+  .nav-item .icon { font-size: 16px; width: 18px; text-align: center; }
+
+  /* ─── Main ─── */
+  main {
+    flex: 1;
+    overflow-y: auto;
+    padding: 32px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+
+  .page { display: none; flex-direction: column; gap: 24px; }
+  .page.active { display: flex; }
+
+  .page-title {
+    font-family: 'Space Mono', monospace;
+    font-size: 22px;
+    font-weight: 700;
+    line-height: 1.2;
+  }
+  .page-title small { display: block; font-size: 12px; color: var(--muted); margin-top: 4px; font-family: 'DM Sans', sans-serif; font-weight: 400; }
+
+  /* ─── Cards ─── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 24px;
+  }
+  .card-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin-bottom: 16px;
+    font-family: 'Space Mono', monospace;
+  }
+
+  /* ─── Form elements ─── */
+  .field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+  .field:last-child { margin-bottom: 0; }
+  label { font-size: 13px; color: var(--muted); }
+  input, select, textarea {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 6px;
+    padding: 9px 12px;
+    font-size: 14px;
+    font-family: 'DM Sans', sans-serif;
+    outline: none;
+    transition: border-color 0.15s;
+    width: 100%;
+  }
+  input:focus, select:focus, textarea:focus { border-color: var(--red); }
+  select option { background: var(--surface2); }
+  textarea { resize: vertical; min-height: 80px; }
+
+  .row { display: flex; gap: 12px; }
+  .row .field { flex: 1; }
+
+  /* ─── Buttons ─── */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 10px 18px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    font-size: 14px;
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 500;
+    transition: all 0.15s;
+    user-select: none;
+    white-space: nowrap;
+  }
+  .btn-primary { background: var(--red); color: #fff; }
+  .btn-primary:hover { background: var(--red-dim); }
+  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-outline { background: transparent; color: var(--text); border: 1px solid var(--border); }
+  .btn-outline:hover { border-color: var(--red); color: var(--red); }
+  .btn-sm { padding: 6px 12px; font-size: 12px; }
+  .btn-ghost { background: transparent; color: var(--muted); border: 1px solid transparent; }
+  .btn-ghost:hover { color: var(--text); border-color: var(--border); }
+
+  .btn-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 16px; }
+
+  /* ─── Results ─── */
+  .results-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .results-count {
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .export-row { display: flex; gap: 6px; flex-wrap: wrap; }
+
+  .table-wrap { overflow-x: auto; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  thead tr { border-bottom: 2px solid var(--border); }
+  th {
+    text-align: left;
+    padding: 8px 12px;
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+  }
+  td {
+    padding: 9px 12px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+    max-width: 260px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  tbody tr:hover td { background: var(--surface2); }
+  td a { color: var(--red); text-decoration: none; }
+  td a:hover { text-decoration: underline; }
+  td.wrap { white-space: normal; word-break: break-word; max-width: 300px; }
+
+  /* ─── Status badges ─── */
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 8px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-family: 'Space Mono', monospace;
+    white-space: nowrap;
+  }
+  .badge-green { background: rgba(34,197,94,0.12); color: var(--green); }
+  .badge-yellow { background: rgba(245,158,11,0.12); color: var(--yellow); }
+  .badge-red { background: rgba(255,45,45,0.12); color: var(--red); }
+  .badge-blue { background: rgba(59,130,246,0.12); color: var(--blue); }
+
+  /* ─── Spinner ─── */
+  .spinner {
+    display: inline-block;
+    width: 16px; height: 16px;
+    border: 2px solid rgba(255,45,45,0.2);
+    border-top-color: var(--red);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ─── Loading state ─── */
+  .loading-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    padding: 60px 0;
+    color: var(--muted);
+    font-size: 14px;
+  }
+  .loading-state .spinner { width: 28px; height: 28px; border-width: 3px; }
+
+  /* ─── Empty state ─── */
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 0;
+    gap: 10px;
+    color: var(--muted);
+  }
+  .empty-state .icon { font-size: 40px; opacity: 0.3; }
+  .empty-state p { font-size: 14px; }
+
+  /* ─── Alert ─── */
+  .alert {
+    padding: 12px 16px;
+    border-radius: 6px;
+    font-size: 13px;
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+  }
+  .alert-error { background: rgba(255,45,45,0.08); border: 1px solid rgba(255,45,45,0.2); color: #ff6b6b; }
+  .alert-info { background: rgba(59,130,246,0.08); border: 1px solid rgba(59,130,246,0.2); color: var(--blue); }
+
+  /* ─── Jobs page ─── */
+  .job-list { display: flex; flex-direction: column; gap: 10px; }
+  .job-card {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+  }
+  .job-info { flex: 1; }
+  .job-id { font-family: 'Space Mono', monospace; font-size: 11px; color: var(--muted); }
+  .job-type { font-size: 14px; font-weight: 500; margin-top: 2px; }
+  .job-meta { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+  /* ─── Toast ─── */
+  #toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 18px;
+    font-size: 13px;
+    z-index: 9999;
+    opacity: 0;
+    transform: translateY(10px);
+    transition: all 0.25s;
+    pointer-events: none;
+    max-width: 320px;
+  }
+  #toast.show { opacity: 1; transform: translateY(0); }
+
+  /* ─── Thumb preview ─── */
+  .thumb { width: 80px; height: 46px; object-fit: cover; border-radius: 4px; background: var(--surface3); display: block; }
+
+  /* ─── Detail view ─── */
+  .detail-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px; }
+  .detail-item label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 4px; font-family: 'Space Mono', monospace; }
+  .detail-item .val { font-size: 14px; word-break: break-all; }
+
+  .chip-row { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+  .chip { background: var(--surface3); border: 1px solid var(--border); border-radius: 4px; padding: 2px 8px; font-size: 11px; color: var(--muted); }
+
+  /* ─── Timeline handles ─── */
+  .tl-handle {
+    position: absolute;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 14px;
+    height: 28px;
+    background: var(--red);
+    border-radius: 4px;
+    cursor: ew-resize;
+    z-index: 10;
+    border: 2px solid #fff;
+    box-shadow: 0 0 0 1px var(--red);
+    transition: transform 0.05s;
+  }
+  .tl-handle:hover { transform: translate(-50%,-50%) scaleY(1.1); }
+  .tl-handle::after {
+    content: '';
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%,-50%);
+    width: 2px; height: 12px;
+    background: rgba(255,255,255,0.6);
+    border-radius: 2px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <span class="logo-dot"></span>
+  <div class="logo">YT<span>Scraper</span></div>
+  <div class="header-sep"></div>
+  <div class="server-status">
+    <div class="status-dot" id="statusDot"></div>
+    <span id="statusText">connecting...</span>
+  </div>
+</header>
+
+<div class="layout">
+  <aside>
+    <div class="section-label">Scrape</div>
+    <div class="nav-item active" data-page="videos"><span class="icon">🔍</span>Search Videos</div>
+    <div class="nav-item" data-page="videoDetails"><span class="icon">🎬</span>Video Details</div>
+    <div class="nav-item" data-page="comments"><span class="icon">💬</span>Comments</div>
+    <div class="nav-item" data-page="captions"><span class="icon">📝</span>Captions</div>
+    <div class="nav-item" data-page="channel"><span class="icon">📺</span>Channel Details</div>
+    <div class="nav-item" data-page="posts"><span class="icon">📰</span>Channel Posts</div>
+    <div class="nav-item" data-page="playlists"><span class="icon">📋</span>Playlists</div>
+    <div class="nav-item" data-page="shorts"><span class="icon">⚡</span>Shorts</div>
+    <div class="section-label" style="margin-top:12px">Download</div>
+    <div class="nav-item" data-page="clipdown"><span class="icon">✂️</span>Clip Downloader</div>
+    <div class="section-label" style="margin-top:12px">History</div>
+    <div class="nav-item" data-page="jobs"><span class="icon">🗂️</span>All Jobs</div>
+  </aside>
+
+  <main>
+
+    <!-- ── Search Videos ── -->
+    <div class="page active" id="page-videos">
+      <div class="page-title">Search Videos <small>Find videos by keyword query</small></div>
+      <div class="card">
+        <div class="card-title">Parameters</div>
+        <div class="row">
+          <div class="field">
+            <label>Search Query</label>
+            <input id="v-query" type="text" placeholder="e.g. JavaScript tutorial 2024">
+          </div>
+          <div class="field" style="max-width:160px">
+            <label>Max Results</label>
+            <input id="v-max" type="number" value="20" min="1" max="100">
+          </div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-primary" onclick="scrape('videos')"><span class="spinner" id="sp-videos" style="display:none"></span>Scrape Videos</button>
+        </div>
+      </div>
+      <div class="card" id="res-videos" style="display:none">
+        <div class="results-header">
+          <div class="results-count" id="cnt-videos">0 results</div>
+          <div class="export-row" id="exp-videos"></div>
+        </div>
+        <div id="tbl-videos"></div>
+      </div>
+    </div>
+
+    <!-- ── Video Details ── -->
+    <div class="page" id="page-videoDetails">
+      <div class="page-title">Video Details <small>Deep metadata for a single video</small></div>
+      <div class="card">
+        <div class="card-title">Parameters</div>
+        <div class="field">
+          <label>YouTube Video URL</label>
+          <input id="vd-url" type="text" placeholder="https://www.youtube.com/watch?v=...">
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-primary" onclick="scrape('videoDetails')"><span class="spinner" id="sp-videoDetails" style="display:none"></span>Get Details</button>
+        </div>
+      </div>
+      <div class="card" id="res-videoDetails" style="display:none">
+        <div class="results-header">
+          <div class="results-count" id="cnt-videoDetails"></div>
+          <div class="export-row" id="exp-videoDetails"></div>
+        </div>
+        <div id="tbl-videoDetails"></div>
+      </div>
+    </div>
+
+    <!-- ── Comments ── -->
+    <div class="page" id="page-comments">
+      <div class="page-title">Comments <small>Scrape comments from a video</small></div>
+      <div class="card">
+        <div class="card-title">Parameters</div>
+        <div class="field">
+          <label>YouTube Video URL</label>
+          <input id="c-url" type="text" placeholder="https://www.youtube.com/watch?v=...">
+        </div>
+        <div class="field" style="max-width:200px">
+          <label>Max Comments</label>
+          <input id="c-max" type="number" value="50" min="1" max="500">
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-primary" onclick="scrape('comments')"><span class="spinner" id="sp-comments" style="display:none"></span>Scrape Comments</button>
+        </div>
+      </div>
+      <div class="card" id="res-comments" style="display:none">
+        <div class="results-header">
+          <div class="results-count" id="cnt-comments">0 comments</div>
+          <div class="export-row" id="exp-comments"></div>
+        </div>
+        <div id="tbl-comments"></div>
+      </div>
+    </div>
+
+    <!-- ── Captions ── -->
+    <div class="page" id="page-captions">
+      <div class="page-title">Captions <small>Extract subtitles / transcript from a video</small></div>
+      <div class="card">
+        <div class="card-title">Parameters</div>
+        <div class="field">
+          <label>YouTube Video URL</label>
+          <input id="cap-url" type="text" placeholder="https://www.youtube.com/watch?v=...">
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-primary" onclick="scrape('captions')"><span class="spinner" id="sp-captions" style="display:none"></span>Get Captions</button>
+        </div>
+      </div>
+      <div class="card" id="res-captions" style="display:none">
+        <div class="results-header">
+          <div class="results-count" id="cnt-captions">0 lines</div>
+          <div class="export-row" id="exp-captions"></div>
+        </div>
+        <div id="tbl-captions"></div>
+      </div>
+    </div>
+
+    <!-- ── Channel Details ── -->
+    <div class="page" id="page-channel">
+      <div class="page-title">Channel Details <small>Full metadata for a YouTube channel</small></div>
+      <div class="card">
+        <div class="card-title">Parameters</div>
+        <div class="field">
+          <label>Channel URL</label>
+          <input id="ch-url" type="text" placeholder="https://www.youtube.com/@channelname">
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-primary" onclick="scrape('channel')"><span class="spinner" id="sp-channel" style="display:none"></span>Get Channel</button>
+        </div>
+      </div>
+      <div class="card" id="res-channel" style="display:none">
+        <div class="results-header">
+          <div class="results-count" id="cnt-channel"></div>
+          <div class="export-row" id="exp-channel"></div>
+        </div>
+        <div id="tbl-channel"></div>
+      </div>
+    </div>
+
+    <!-- ── Channel Posts ── -->
+    <div class="page" id="page-posts">
+      <div class="page-title">Channel Posts <small>Community posts from a channel</small></div>
+      <div class="card">
+        <div class="card-title">Parameters</div>
+        <div class="field">
+          <label>Channel URL</label>
+          <input id="p-url" type="text" placeholder="https://www.youtube.com/@channelname">
+        </div>
+        <div class="field" style="max-width:200px">
+          <label>Max Posts</label>
+          <input id="p-max" type="number" value="20" min="1" max="100">
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-primary" onclick="scrape('posts')"><span class="spinner" id="sp-posts" style="display:none"></span>Scrape Posts</button>
+        </div>
+      </div>
+      <div class="card" id="res-posts" style="display:none">
+        <div class="results-header">
+          <div class="results-count" id="cnt-posts">0 posts</div>
+          <div class="export-row" id="exp-posts"></div>
+        </div>
+        <div id="tbl-posts"></div>
+      </div>
+    </div>
+
+    <!-- ── Playlists ── -->
+    <div class="page" id="page-playlists">
+      <div class="page-title">Playlists <small>All playlists from a channel</small></div>
+      <div class="card">
+        <div class="card-title">Parameters</div>
+        <div class="field">
+          <label>Channel URL</label>
+          <input id="pl-url" type="text" placeholder="https://www.youtube.com/@channelname">
+        </div>
+        <div class="field" style="max-width:200px">
+          <label>Max Playlists</label>
+          <input id="pl-max" type="number" value="20" min="1" max="100">
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-primary" onclick="scrape('playlists')"><span class="spinner" id="sp-playlists" style="display:none"></span>Scrape Playlists</button>
+        </div>
+      </div>
+      <div class="card" id="res-playlists" style="display:none">
+        <div class="results-header">
+          <div class="results-count" id="cnt-playlists">0 playlists</div>
+          <div class="export-row" id="exp-playlists"></div>
+        </div>
+        <div id="tbl-playlists"></div>
+      </div>
+    </div>
+
+    <!-- ── Shorts ── -->
+    <div class="page" id="page-shorts">
+      <div class="page-title">Shorts <small>Scrape Shorts from a channel</small></div>
+      <div class="card">
+        <div class="card-title">Parameters</div>
+        <div class="field">
+          <label>Channel URL</label>
+          <input id="sh-url" type="text" placeholder="https://www.youtube.com/@channelname">
+        </div>
+        <div class="field" style="max-width:200px">
+          <label>Max Shorts</label>
+          <input id="sh-max" type="number" value="20" min="1" max="100">
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-primary" onclick="scrape('shorts')"><span class="spinner" id="sp-shorts" style="display:none"></span>Scrape Shorts</button>
+        </div>
+      </div>
+      <div class="card" id="res-shorts" style="display:none">
+        <div class="results-header">
+          <div class="results-count" id="cnt-shorts">0 shorts</div>
+          <div class="export-row" id="exp-shorts"></div>
+        </div>
+        <div id="tbl-shorts"></div>
+      </div>
+    </div>
+
+
+    <!-- ── Clip Downloader ── -->
+    <div class="page" id="page-clipdown">
+      <div class="page-title">✂️ Clip Downloader <small>Download any segment with frame-perfect precision using yt-dlp + ffmpeg</small></div>
+
+      <!-- Step 1: URL + Info -->
+      <div class="card">
+        <div class="card-title">Step 1 — Video URL</div>
+        <div class="row" style="align-items:flex-end">
+          <div class="field">
+            <label>YouTube URL</label>
+            <input id="dl-url" type="text" placeholder="https://www.youtube.com/watch?v=..." oninput="clearVideoInfo()">
+          </div>
+          <div style="margin-bottom:14px">
+            <button class="btn btn-outline" id="dl-info-btn" onclick="fetchVideoInfo()">
+              <span class="spinner" id="sp-dlinfo" style="display:none"></span>
+              Load Video
+            </button>
+          </div>
+        </div>
+
+        <!-- Video preview card -->
+        <div id="dl-video-preview" style="display:none">
+          <div style="display:flex;gap:16px;align-items:flex-start;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:14px;margin-top:4px">
+            <img id="dl-thumb" src="" style="width:140px;height:80px;object-fit:cover;border-radius:6px;flex-shrink:0">
+            <div style="flex:1;min-width:0">
+              <div id="dl-title" style="font-weight:600;font-size:15px;margin-bottom:4px;line-height:1.3"></div>
+              <div id="dl-uploader" style="font-size:12px;color:var(--muted);margin-bottom:8px"></div>
+              <div style="display:flex;gap:12px;flex-wrap:wrap">
+                <div>
+                  <span style="font-size:11px;color:var(--muted);font-family:'Space Mono',monospace">DURATION</span>
+                  <div id="dl-duration-label" style="font-family:'Space Mono',monospace;font-size:14px;color:var(--red);margin-top:2px">—</div>
+                </div>
+                <div>
+                  <span style="font-size:11px;color:var(--muted);font-family:'Space Mono',monospace">VIEWS</span>
+                  <div id="dl-views" style="font-family:'Space Mono',monospace;font-size:14px;margin-top:2px">—</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 2: Clip times -->
+      <div class="card" id="dl-step2" style="opacity:0.4;pointer-events:none">
+        <div class="card-title">Step 2 — Clip Times</div>
+
+        <!-- Timeline slider -->
+        <div id="dl-timeline-wrap" style="margin-bottom:20px">
+          <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);font-family:'Space Mono',monospace;margin-bottom:6px">
+            <span>0:00</span>
+            <span id="dl-timeline-end">—</span>
+          </div>
+          <div id="dl-timeline" style="position:relative;height:36px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;cursor:pointer;user-select:none" onclick="timelineClick(event)">
+            <!-- filled region -->
+            <div id="dl-tl-fill" style="position:absolute;top:0;bottom:0;background:rgba(255,45,45,0.18);border:1px solid var(--red);pointer-events:none;border-radius:4px"></div>
+            <!-- start handle -->
+            <div id="dl-tl-start" class="tl-handle" style="left:0%" draggable="false" onmousedown="startDrag(event,'start')" title="Drag to set start"></div>
+            <!-- end handle -->
+            <div id="dl-tl-end" class="tl-handle" style="left:100%" draggable="false" onmousedown="startDrag(event,'end')" title="Drag to set end"></div>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-top:4px">
+            <span>← drag handles or type exact times below</span>
+            <span id="dl-clip-dur-label" style="font-family:'Space Mono',monospace;color:var(--red)"></span>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="field">
+            <label>Start Time</label>
+            <div style="display:flex;gap:6px;align-items:center">
+              <input id="dl-start-h"  type="number" min="0" max="23" value="0" placeholder="HH" style="width:60px;text-align:center" oninput="syncFromInputs()">
+              <span style="color:var(--muted);font-size:18px">:</span>
+              <input id="dl-start-m"  type="number" min="0" max="59" value="0" placeholder="MM" style="width:60px;text-align:center" oninput="syncFromInputs()">
+              <span style="color:var(--muted);font-size:18px">:</span>
+              <input id="dl-start-s"  type="number" min="0" max="59" step="0.001" value="0" placeholder="SS" style="width:80px;text-align:center" oninput="syncFromInputs()">
+            </div>
+            <div style="font-size:11px;color:var(--muted);margin-top:4px;font-family:'Space Mono',monospace" id="dl-start-sec-label">= 0.000s</div>
+          </div>
+          <div class="field">
+            <label>End Time</label>
+            <div style="display:flex;gap:6px;align-items:center">
+              <input id="dl-end-h"  type="number" min="0" max="23" value="0" placeholder="HH" style="width:60px;text-align:center" oninput="syncFromInputs()">
+              <span style="color:var(--muted);font-size:18px">:</span>
+              <input id="dl-end-m"  type="number" min="0" max="59" value="0" placeholder="MM" style="width:60px;text-align:center" oninput="syncFromInputs()">
+              <span style="color:var(--muted);font-size:18px">:</span>
+              <input id="dl-end-s"  type="number" min="0" max="59" step="0.001" value="0" placeholder="SS" style="width:80px;text-align:center" oninput="syncFromInputs()">
+            </div>
+            <div style="font-size:11px;color:var(--muted);margin-top:4px;font-family:'Space Mono',monospace" id="dl-end-sec-label">= 0.000s</div>
+          </div>
+        </div>
+
+
+        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:10px 14px;font-size:13px;color:var(--muted);margin-top:4px">
+          ⚡ Downloads the clip directly from YouTube at the best available quality — no re-encoding, no extra software needed.
+        </div>
+
+        <div class="btn-row">
+          <button class="btn btn-primary" id="dl-start-btn" onclick="startClipDownload()" style="font-size:15px;padding:12px 24px">
+            <span class="spinner" id="sp-dl" style="display:none"></span>
+            ✂️ Download Clip
+          </button>
+          <span id="dl-validation-msg" style="font-size:13px;color:var(--red)"></span>
+        </div>
+      </div>
+
+      <!-- Progress -->
+      <div class="card" id="dl-progress-card" style="display:none">
+        <div class="card-title">Progress</div>
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <span id="dl-stage" style="font-size:14px;color:var(--muted)">Starting…</span>
+            <span id="dl-pct" style="font-family:'Space Mono',monospace;font-size:14px;color:var(--red)">0%</span>
+          </div>
+          <div style="background:var(--surface2);border-radius:20px;height:6px;overflow:hidden;border:1px solid var(--border)">
+            <div id="dl-bar" style="height:100%;background:var(--red);border-radius:20px;width:0%;transition:width 0.3s ease"></div>
+          </div>
+          <!-- Done state -->
+          <div id="dl-done-state" style="display:none;flex-direction:column;gap:10px">
+            <div style="display:flex;align-items:center;gap:8px">
+              <span style="font-size:24px">✅</span>
+              <div>
+                <div id="dl-done-filename" style="font-weight:600;font-size:14px"></div>
+                <div id="dl-done-filesize" style="font-size:12px;color:var(--muted)"></div>
+              </div>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <button class="btn btn-primary" id="dl-download-btn" onclick="downloadFile()">⬇️ Save File</button>
+              <button class="btn btn-outline" onclick="resetDownloader()">Start Another</button>
+            </div>
+          </div>
+          <!-- Error state -->
+          <div id="dl-error-state" style="display:none">
+            <div class="alert alert-error" id="dl-error-msg"></div>
+            <button class="btn btn-outline btn-sm" style="margin-top:10px" onclick="resetDownloader()">Try Again</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Recent downloads -->
+      <div class="card">
+        <div class="results-header">
+          <div class="card-title" style="margin-bottom:0">Recent Downloads</div>
+          <button class="btn btn-ghost btn-sm" onclick="loadDlJobs()">↻ Refresh</button>
+        </div>
+        <div id="dl-jobs-list" style="margin-top:12px"><div style="color:var(--muted);font-size:13px">No downloads yet.</div></div>
+      </div>
+    </div>
+
+    <!-- ── Jobs ── -->
+    <div class="page" id="page-jobs">
+      <div class="page-title">All Jobs <small>History of scraping sessions</small></div>
+      <div class="card">
+        <div class="results-header">
+          <div class="results-count" id="jobs-count">Loading...</div>
+          <button class="btn btn-outline btn-sm" onclick="loadJobs()">↻ Refresh</button>
+        </div>
+        <div id="jobs-list"><div class="loading-state"><div class="spinner"></div>Loading jobs...</div></div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<div id="toast"></div>
+
+<script>
+const API = `${window.location.origin}/api`;
+let activeJobs = {};
+
+// ─── Nav ────────────────────────────────────────────────────────────────────
+document.querySelectorAll('.nav-item[data-page]').forEach(el => {
+  el.addEventListener('click', () => {
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    el.classList.add('active');
+    document.getElementById(`page-${el.dataset.page}`).classList.add('active');
+    if (el.dataset.page === 'jobs') loadJobs();
+  });
+});
+
+// ─── Server status ───────────────────────────────────────────────────────────
+async function checkStatus() {
+  try {
+    const r = await fetch(`${API}/status`);
+    if (r.ok) {
+      document.getElementById('statusDot').className = 'status-dot';
+      document.getElementById('statusText').textContent = 'server online';
+    }
+  } catch {
+    document.getElementById('statusDot').className = 'status-dot offline';
+    document.getElementById('statusText').textContent = 'server offline';
+  }
+}
+checkStatus();
+setInterval(checkStatus, 10000);
+
+// ─── Toast ───────────────────────────────────────────────────────────────────
+function toast(msg, dur = 3000) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), dur);
+}
+
+// ─── Spinner helpers ─────────────────────────────────────────────────────────
+function setLoading(type, on) {
+  const sp = document.getElementById(`sp-${type}`);
+  if (sp) sp.style.display = on ? 'inline-block' : 'none';
+}
+
+// ─── Poll job ────────────────────────────────────────────────────────────────
+function pollJob(jobId, onDone, onError) {
+  const interval = setInterval(async () => {
+    try {
+      const r = await fetch(`${API}/jobs/${jobId}`);
+      const job = await r.json();
+      if (job.status === 'done') { clearInterval(interval); onDone(job); }
+      if (job.status === 'error') { clearInterval(interval); onError(job.error); }
+    } catch(e) { clearInterval(interval); onError(e.message); }
+  }, 1500);
+}
+
+// ─── Export buttons ──────────────────────────────────────────────────────────
+function exportBtns(jobId, containerId) {
+  const c = document.getElementById(containerId);
+  c.innerHTML = '';
+  ['csv','json','xlsx','html'].forEach(fmt => {
+    const b = document.createElement('button');
+    b.className = 'btn btn-outline btn-sm';
+    b.textContent = fmt.toUpperCase();
+    b.onclick = () => { window.open(`${API}/export/${jobId}/${fmt}`, '_blank'); toast(`Downloading ${fmt.toUpperCase()}...`); };
+    c.appendChild(b);
+  });
+}
+
+// ─── Generic table renderer ──────────────────────────────────────────────────
+function renderTable(data, containerId) {
+  const c = document.getElementById(containerId);
+  if (!data || data.length === 0) {
+    c.innerHTML = `<div class="empty-state"><div class="icon">📭</div><p>No data returned</p></div>`;
+    return;
+  }
+  const keys = Object.keys(data[0]);
+  const ths = keys.map(k => `<th>${k}</th>`).join('');
+  const trs = data.map(row => {
+    const tds = keys.map(k => {
+      let val = row[k];
+      if (val === null || val === undefined) val = '';
+      if (typeof val === 'object') val = JSON.stringify(val);
+      // render thumbnails
+      if ((k === 'thumbnail' || k.includes('Url') && String(val).match(/\.(jpg|jpeg|png|webp)/i)) && String(val).startsWith('http')) {
+        return `<td><img class="thumb" src="${val}" onerror="this.style.display='none'" loading="lazy"></td>`;
+      }
+      // render links
+      if ((k.toLowerCase().includes('url') || k.toLowerCase().includes('link')) && String(val).startsWith('http')) {
+        return `<td><a href="${val}" target="_blank" title="${val}">${String(val).length > 40 ? String(val).slice(0,40)+'…' : val}</a></td>`;
+      }
+      const display = String(val).length > 80 ? String(val).slice(0,80)+'…' : String(val);
+      return `<td title="${String(val).replace(/"/g,'&quot;')}">${display}</td>`;
+    }).join('');
+    return `<tr>${tds}</tr>`;
+  }).join('');
+  c.innerHTML = `<div class="table-wrap"><table><thead><tr>${ths}</tr></thead><tbody>${trs}</tbody></table></div>`;
+}
+
+// ─── Scrape dispatch ─────────────────────────────────────────────────────────
+async function scrape(type) {
+  let body = {};
+  if (type === 'videos') {
+    const q = document.getElementById('v-query').value.trim();
+    if (!q) { toast('Enter a search query'); return; }
+    body = { query: q, maxResults: parseInt(document.getElementById('v-max').value) };
+  } else if (type === 'videoDetails') {
+    const url = document.getElementById('vd-url').value.trim();
+    if (!url) { toast('Enter a video URL'); return; }
+    body = { url };
+  } else if (type === 'comments') {
+    const url = document.getElementById('c-url').value.trim();
+    if (!url) { toast('Enter a video URL'); return; }
+    body = { url, maxComments: parseInt(document.getElementById('c-max').value) };
+  } else if (type === 'captions') {
+    const url = document.getElementById('cap-url').value.trim();
+    if (!url) { toast('Enter a video URL'); return; }
+    body = { url };
+  } else if (type === 'channel') {
+    const url = document.getElementById('ch-url').value.trim();
+    if (!url) { toast('Enter a channel URL'); return; }
+    body = { url };
+  } else if (type === 'posts') {
+    const url = document.getElementById('p-url').value.trim();
+    if (!url) { toast('Enter a channel URL'); return; }
+    body = { url, maxPosts: parseInt(document.getElementById('p-max').value) };
+  } else if (type === 'playlists') {
+    const url = document.getElementById('pl-url').value.trim();
+    if (!url) { toast('Enter a channel URL'); return; }
+    body = { url, maxItems: parseInt(document.getElementById('pl-max').value) };
+  } else if (type === 'shorts') {
+    const url = document.getElementById('sh-url').value.trim();
+    if (!url) { toast('Enter a channel URL'); return; }
+    body = { url, maxItems: parseInt(document.getElementById('sh-max').value) };
+  }
+
+  const endpointMap = {
+    videos: 'videos',
+    videoDetails: 'video-details',
+    comments: 'comments',
+    captions: 'captions',
+    channel: 'channel',
+    posts: 'posts',
+    playlists: 'playlists',
+    shorts: 'shorts',
+  };
+
+  setLoading(type, true);
+  const resCard = document.getElementById(`res-${type}`);
+  const tblEl = document.getElementById(`tbl-${type}`);
+  const cntEl = document.getElementById(`cnt-${type}`);
+  if (resCard) resCard.style.display = 'block';
+  if (tblEl) tblEl.innerHTML = `<div class="loading-state"><div class="spinner"></div><span>Scraping… this may take 15–40 seconds</span></div>`;
+  if (cntEl) cntEl.textContent = 'Running…';
+
+  try {
+    const r = await fetch(`${API}/scrape/${endpointMap[type]}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const { jobId, error } = await r.json();
+    if (error) throw new Error(error);
+
+    pollJob(jobId,
+      (job) => {
+        setLoading(type, false);
+        const data = job.data || [];
+        if (cntEl) cntEl.textContent = `${data.length} result${data.length !== 1 ? 's' : ''}`;
+        renderTable(data, `tbl-${type}`);
+        exportBtns(jobId, `exp-${type}`);
+        toast(`✓ Done — ${data.length} results`);
+      },
+      (err) => {
+        setLoading(type, false);
+        if (tblEl) tblEl.innerHTML = `<div class="alert alert-error">⚠ ${err}</div>`;
+        if (cntEl) cntEl.textContent = 'Error';
+        toast('Scrape failed: ' + err);
+      }
+    );
+  } catch(e) {
+    setLoading(type, false);
+    if (tblEl) tblEl.innerHTML = `<div class="alert alert-error">⚠ ${e.message}</div>`;
+    toast('Error: ' + e.message);
+  }
+}
+
+// ─── Jobs page ───────────────────────────────────────────────────────────────
+async function loadJobs() {
+  const el = document.getElementById('jobs-list');
+  const cnt = document.getElementById('jobs-count');
+  try {
+    const r = await fetch(`${API}/status`);
+    const { jobs } = await r.json();
+    const list = (jobs || []).slice().reverse();
+    cnt.textContent = `${list.length} job${list.length !== 1 ? 's' : ''}`;
+    if (list.length === 0) {
+      el.innerHTML = `<div class="empty-state"><div class="icon">🗂️</div><p>No jobs yet</p></div>`;
+      return;
+    }
+    el.innerHTML = '<div class="job-list">' + list.map(j => {
+      const badge = j.status === 'done'
+        ? `<span class="badge badge-green">● done</span>`
+        : j.status === 'running'
+        ? `<span class="badge badge-yellow">● running</span>`
+        : `<span class="badge badge-red">● error</span>`;
+      const exportRow = j.status === 'done'
+        ? ['csv','json','xlsx','html'].map(fmt =>
+            `<button class="btn btn-ghost btn-sm" onclick="window.open('${API}/export/${j.id}/${fmt}','_blank')">${fmt.toUpperCase()}</button>`
+          ).join('')
+        : '';
+      return `<div class="job-card">
+        <div class="job-info">
+          <div class="job-id">${j.id}</div>
+          <div class="job-type">${j.type} ${j.status === 'done' ? `— <strong>${(j.data||[]).length} records</strong>` : ''}</div>
+          <div class="job-meta">Started ${new Date(j.startedAt).toLocaleTimeString()}${j.finishedAt ? ' · Finished ' + new Date(j.finishedAt).toLocaleTimeString() : ''}</div>
+          ${j.error ? `<div class="alert alert-error" style="margin-top:8px;font-size:12px">⚠ ${j.error}</div>` : ''}
+        </div>
+        ${badge}
+        <div style="display:flex;gap:4px;flex-wrap:wrap">${exportRow}</div>
+      </div>`;
+    }).join('') + '</div>';
+  } catch(e) {
+    el.innerHTML = `<div class="alert alert-error">Could not load jobs: ${e.message}</div>`;
+  }
+}
+
+// allow Enter key in inputs
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && e.target.tagName === 'INPUT') {
+    const page = document.querySelector('.page.active');
+    if (page) {
+      const btn = page.querySelector('.btn-primary');
+      if (btn) btn.click();
+    }
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════
+// CLIP DOWNLOADER
+// ═══════════════════════════════════════════════════════════════════
+
+let videoDuration = 0;   // total seconds of loaded video
+let startSec = 0;
+let endSec   = 0;
+let activeDownloadJobId = null;
+let dlPollInterval = null;
+
+// ── Helpers ─────────────────────────────────────────────────────────
+function secToHMS(s) {
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = (s % 60).toFixed(3);
+  return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${sec.padStart(6,'0')}`;
+}
+function secToLabel(s) {
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = Math.floor(s % 60);
+  const ms  = Math.round((s % 1) * 1000);
+  if (h > 0) return `${h}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}.${String(ms).padStart(3,'0')}`;
+  return `${m}:${String(sec).padStart(2,'0')}.${String(ms).padStart(3,'0')}`;
+}
+function hmsToSec(h, m, s) {
+  return parseFloat(h||0)*3600 + parseFloat(m||0)*60 + parseFloat(s||0);
+}
+function pctToSec(pct) { return Math.max(0, Math.min(videoDuration, pct * videoDuration)); }
+function secToPct(s)   { return videoDuration > 0 ? Math.max(0, Math.min(1, s / videoDuration)) : 0; }
+
+// ── Fill inputs from seconds values ─────────────────────────────────
+function setInputsFromSec() {
+  const setHMS = (prefix, s) => {
+    document.getElementById(`dl-${prefix}-h`).value = Math.floor(s / 3600);
+    document.getElementById(`dl-${prefix}-m`).value = Math.floor((s % 3600) / 60);
+    document.getElementById(`dl-${prefix}-s`).value = (s % 60).toFixed(3);
+    document.getElementById(`dl-${prefix}-sec-label`).textContent = `= ${s.toFixed(3)}s`;
+  };
+  setHMS('start', startSec);
+  setHMS('end', endSec);
+  updateTimeline();
+  updateClipDuration();
+}
+
+// ── Sync seconds from inputs ─────────────────────────────────────────
+function syncFromInputs() {
+  startSec = Math.max(0, hmsToSec(
+    document.getElementById('dl-start-h').value,
+    document.getElementById('dl-start-m').value,
+    document.getElementById('dl-start-s').value,
+  ));
+  endSec = Math.max(0, hmsToSec(
+    document.getElementById('dl-end-h').value,
+    document.getElementById('dl-end-m').value,
+    document.getElementById('dl-end-s').value,
+  ));
+  if (videoDuration > 0) {
+    startSec = Math.min(startSec, videoDuration);
+    endSec   = Math.min(endSec, videoDuration);
+  }
+  document.getElementById('dl-start-sec-label').textContent = `= ${startSec.toFixed(3)}s`;
+  document.getElementById('dl-end-sec-label').textContent   = `= ${endSec.toFixed(3)}s`;
+  updateTimeline();
+  updateClipDuration();
+}
+
+// ── Timeline rendering ───────────────────────────────────────────────
+function updateTimeline() {
+  const startPct = secToPct(startSec) * 100;
+  const endPct   = secToPct(endSec)   * 100;
+  document.getElementById('dl-tl-start').style.left = `${startPct}%`;
+  document.getElementById('dl-tl-end').style.left   = `${endPct}%`;
+  document.getElementById('dl-tl-fill').style.left  = `${startPct}%`;
+  document.getElementById('dl-tl-fill').style.width = `${endPct - startPct}%`;
+}
+
+function updateClipDuration() {
+  const dur = Math.max(0, endSec - startSec);
+  document.getElementById('dl-clip-dur-label').textContent = dur > 0 ? `Clip: ${secToLabel(dur)}` : '';
+  const msg = document.getElementById('dl-validation-msg');
+  if (endSec <= startSec && videoDuration > 0) {
+    msg.textContent = '⚠ End time must be after start time';
+  } else {
+    msg.textContent = '';
+  }
+}
+
+// ── Timeline click ───────────────────────────────────────────────────
+function timelineClick(e) {
+  if (dragging) return;
+  const rect = e.currentTarget.getBoundingClientRect();
+  const pct  = (e.clientX - rect.left) / rect.width;
+  const s    = pctToSec(pct);
+  // snap to closer handle
+  if (Math.abs(s - startSec) < Math.abs(s - endSec)) { startSec = s; }
+  else { endSec = s; }
+  setInputsFromSec();
+}
+
+// ── Drag handles ─────────────────────────────────────────────────────
+let dragging = null;
+function startDrag(e, handle) {
+  e.preventDefault();
+  dragging = handle;
+  const onMove = (ev) => {
+    const tl = document.getElementById('dl-timeline');
+    const rect = tl.getBoundingClientRect();
+    const pct = Math.max(0, Math.min(1, (ev.clientX - rect.left) / rect.width));
+    const s = pctToSec(pct);
+    if (handle === 'start') { startSec = Math.min(s, endSec - 0.001); }
+    else                    { endSec   = Math.max(s, startSec + 0.001); }
+    setInputsFromSec();
+  };
+  const onUp = () => {
+    dragging = null;
+    window.removeEventListener('mousemove', onMove);
+    window.removeEventListener('mouseup', onUp);
+  };
+  window.addEventListener('mousemove', onMove);
+  window.addEventListener('mouseup', onUp);
+}
+
+// ── Fetch video info ─────────────────────────────────────────────────
+async function fetchVideoInfo() {
+  const url = document.getElementById('dl-url').value.trim();
+  if (!url) { toast('Enter a YouTube URL first'); return; }
+  const btn = document.getElementById('dl-info-btn');
+  const sp  = document.getElementById('sp-dlinfo');
+  btn.disabled = true; sp.style.display = 'inline-block';
+  try {
+    const r = await fetch(`${API}/download/info`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url })
+    });
+    const info = await r.json();
+    if (info.error) throw new Error(info.error);
+
+    videoDuration = info.duration || 0;
+    startSec = 0;
+    endSec   = Math.min(30, videoDuration);
+
+    // show preview
+    document.getElementById('dl-thumb').src           = info.thumbnail || '';
+    document.getElementById('dl-title').textContent   = info.title || '';
+    document.getElementById('dl-uploader').textContent = info.uploader || '';
+    document.getElementById('dl-duration-label').textContent = secToLabel(videoDuration);
+    document.getElementById('dl-views').textContent   = (info.viewCount || 0).toLocaleString();
+    document.getElementById('dl-video-preview').style.display = 'block';
+    document.getElementById('dl-timeline-end').textContent    = secToLabel(videoDuration);
+
+    // unlock step 2
+    const step2 = document.getElementById('dl-step2');
+    step2.style.opacity = '1';
+    step2.style.pointerEvents = 'auto';
+
+    setInputsFromSec();
+    toast('✓ Video loaded');
+    loadDlJobs();
+  } catch(e) {
+    toast('Error: ' + e.message, 5000);
+  } finally {
+    btn.disabled = false; sp.style.display = 'none';
+  }
+}
+
+function clearVideoInfo() {
+  document.getElementById('dl-video-preview').style.display = 'none';
+  document.getElementById('dl-step2').style.opacity = '0.4';
+  document.getElementById('dl-step2').style.pointerEvents = 'none';
+  videoDuration = 0; startSec = 0; endSec = 0;
+}
+
+// ── Start download ───────────────────────────────────────────────────
+async function startClipDownload() {
+  syncFromInputs();
+  if (endSec <= startSec) { toast('End time must be after start time'); return; }
+  if (!document.getElementById('dl-url').value.trim()) { toast('No URL loaded'); return; }
+
+  const url = document.getElementById('dl-url').value.trim();
+
+  document.getElementById('dl-progress-card').style.display = 'block';
+  document.getElementById('dl-done-state').style.display   = 'none';
+  document.getElementById('dl-error-state').style.display  = 'none';
+  document.getElementById('dl-bar').style.width = '0%';
+  document.getElementById('dl-pct').textContent = '0%';
+  document.getElementById('dl-stage').textContent = 'Starting…';
+  document.getElementById('sp-dl').style.display = 'inline-block';
+  document.getElementById('dl-start-btn').disabled = true;
+
+  document.getElementById('dl-progress-card').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+  try {
+    const r = await fetch(`${API}/download/clip`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url, start: startSec, end: endSec }),
+    });
+    const { jobId, error } = await r.json();
+    if (error) throw new Error(error);
+    activeDownloadJobId = jobId;
+    pollDownloadJob(jobId);
+  } catch(e) {
+    document.getElementById('sp-dl').style.display = 'none';
+    document.getElementById('dl-start-btn').disabled = false;
+    document.getElementById('dl-error-state').style.display = 'block';
+    document.getElementById('dl-error-msg').textContent = '⚠ ' + e.message;
+  }
+}
+
+function pollDownloadJob(jobId) {
+  if (dlPollInterval) clearInterval(dlPollInterval);
+  dlPollInterval = setInterval(async () => {
+    try {
+      const r = await fetch(`${API}/download/status/${jobId}`);
+      const job = await r.json();
+
+      document.getElementById('dl-bar').style.width   = `${job.progress}%`;
+      document.getElementById('dl-pct').textContent   = `${job.progress}%`;
+      document.getElementById('dl-stage').textContent = job.stage || '…';
+
+      if (job.status === 'done') {
+        clearInterval(dlPollInterval);
+        document.getElementById('sp-dl').style.display = 'none';
+        document.getElementById('dl-start-btn').disabled = false;
+        document.getElementById('dl-done-state').style.display = 'flex';
+        document.getElementById('dl-done-filename').textContent = job.fileName || '';
+        const mb = job.fileSize ? (job.fileSize / 1024 / 1024).toFixed(2) + ' MB' : '';
+        document.getElementById('dl-done-filesize').textContent = mb;
+        toast('✅ Clip ready! Click "Save File" to download.');
+        loadDlJobs();
+      }
+      if (job.status === 'error') {
+        clearInterval(dlPollInterval);
+        document.getElementById('sp-dl').style.display = 'none';
+        document.getElementById('dl-start-btn').disabled = false;
+        document.getElementById('dl-error-state').style.display = 'block';
+        document.getElementById('dl-error-msg').textContent = '⚠ ' + job.error;
+        toast('Clip failed: ' + job.error, 5000);
+      }
+    } catch(e) { /* network hiccup, keep polling */ }
+  }, 1200);
+}
+
+function downloadFile() {
+  if (!activeDownloadJobId) return;
+  window.open(`${API}/download/file/${activeDownloadJobId}`, '_blank');
+}
+
+function resetDownloader() {
+  document.getElementById('dl-progress-card').style.display = 'none';
+  document.getElementById('dl-start-btn').disabled = false;
+  document.getElementById('sp-dl').style.display = 'none';
+  document.getElementById('dl-bar').style.width = '0%';
+  if (dlPollInterval) clearInterval(dlPollInterval);
+  activeDownloadJobId = null;
+}
+
+// ── Recent downloads list ────────────────────────────────────────────
+async function loadDlJobs() {
+  const el = document.getElementById('dl-jobs-list');
+  try {
+    const r = await fetch(`${API}/download/jobs`);
+    const jobs = await r.json();
+    if (!jobs.length) { el.innerHTML = '<div style="color:var(--muted);font-size:13px">No downloads yet.</div>'; return; }
+    el.innerHTML = jobs.slice(0,10).map(j => {
+      const badge = j.status === 'done'
+        ? `<span class="badge badge-green">● done</span>`
+        : j.status === 'running'
+        ? `<span class="badge badge-yellow">● ${j.progress}%</span>`
+        : `<span class="badge badge-red">● error</span>`;
+      const dlBtn = j.status === 'done'
+        ? `<button class="btn btn-outline btn-sm" onclick="window.open('${API}/download/file/${j.id}','_blank')">⬇️ Save</button>`
+        : '';
+      const params = j.params || {};
+      const dur = params.endSec != null && params.startSec != null
+        ? `${secToLabel(params.startSec)} → ${secToLabel(params.endSec)}`
+        : '';
+      return `<div class="job-card" style="margin-bottom:8px">
+        <div class="job-info">
+          <div class="job-type">${j.title || params.url?.slice(0,50) || j.id}</div>
+          <div class="job-meta">${dur}${j.fileName ? ' · ' + j.fileName : ''}${j.fileSize ? ' · ' + (j.fileSize/1024/1024).toFixed(1)+'MB' : ''}</div>
+          ${j.error ? `<div style="color:var(--red);font-size:12px;margin-top:4px">⚠ ${j.error}</div>` : ''}
+        </div>
+        ${badge} ${dlBtn}
+      </div>`;
+    }).join('');
+  } catch(e) {
+    el.innerHTML = `<div style="color:var(--red);font-size:13px">Could not load: ${e.message}</div>`;
+  }
+}
+
+// load download jobs when page is clicked
+document.querySelector('[data-page="clipdown"]').addEventListener('click', () => {
+  setTimeout(loadDlJobs, 100);
+});
+</script>
+</body>
+</html>

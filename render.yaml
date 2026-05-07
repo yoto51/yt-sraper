@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: yt-scraper
+    runtime: node
+    plan: standard        # needs at least Standard — Free plan has no disk & too little RAM for puppeteer
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /api/status
+
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PUPPETEER_SKIP_CHROMIUM_DOWNLOAD
+        value: "false"
+
+    # Persistent disk so downloads & yt-dlp binary survive restarts
+    disk:
+      name: yt-scraper-data
+      mountPath: /opt/render/project/src/downloads
+      sizeGB: 10

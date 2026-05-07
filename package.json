@@ -1,0 +1,36 @@
+{
+  "name": "yt-scraper",
+  "version": "1.0.0",
+  "description": "YouTube Scraper CLI - Extract videos, channels, comments, captions, shorts & more",
+  "main": "server.js",
+  "type": "commonjs",
+  "bin": {
+    "yt-scraper": "src/index.js"
+  },
+  "scripts": {
+    "start": "node setup.js && node server.js",
+    "setup": "node setup.js",
+    "server": "node server.js"
+  },
+  "dependencies": {
+    "axios": "^1.16.0",
+    "chalk": "^4.1.2",
+    "commander": "^12.1.0",
+    "cors": "^2.8.6",
+    "csv-writer": "^1.6.0",
+    "express": "^5.2.1",
+    "inquirer": "^8.2.7",
+    "json2csv": "^6.0.0-alpha.2",
+    "ora": "^5.4.1",
+    "puppeteer-extra": "^3.3.6",
+    "puppeteer-extra-plugin-stealth": "^2.11.2",
+    "xlsx": "^0.18.5",
+    "youtubei.js": "^17.0.1",
+    "yt-dlp-wrap": "^2.3.12",
+    "yt-search": "^2.13.1",
+    "ytdl-core": "^4.11.5"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}
